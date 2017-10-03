@@ -1,0 +1,290 @@
+process:
+
+Address Space : Virtual, mapping to locations of physical memory, when the physical memory is not sufficient to be allocated, swapping will happen.
+
+In user state? seems yes.
+
+Programming Counter: Used by cpu to know the exact location where the process currently is.
+
+Cpu Registers: PC is maintained on the register, cpu may have many registers.
+CPU has a dedicated register which is used to track the PC for the currentlt executing process. For example, when a process named p1 is runnning on cpu, the registers hold the value that corresponds to the state of p1.
+
+PCB(进程控制块 in Chinese): Process Control Block. Operating System uses this to maintain information for every single process. When the process is no longer running on the cpu, it is the Operating System's responsibility to collect and store the information the cpu maintains into the PCB.zhanqu
+
+It holds: Program Counter, Stack Pointer, Registers, Memory Mappings.、
+
+它是操作系统感知进程的唯一方式，存储着计数器，进程状态等基本信息。
+
+Question: Does it hold paging table ?
+
+Process Lifecycle: 
+
+When the process is created  ---> New.
+The process is admitted ---> Ready.
+The scheduler schedules some time for the process on cpu ---> Running.
+Interrupted to perform context-switch ---> Ready.
+Starting I/O or Socket ---> Waiting.
+Blocking is end ---> Ready.
+Process finishes or encounters an error ---> Terminated.
+
+进程内存管理：
+text区： 存放代码，通常是共享的。
+data区： 存放变量，包括初始化的全局变量，静态变量（全局的或者局部的）。
+BSS区：存放全局的未初始化变量。
+栈区：存放函数参数值，局部变量，当函数调用的时候，返回类型和调用信息被存储在栈当中。被操作系统预先定义好其最大大小，无限递归会导致Stackoverflow，注意是函数内部局部变量是放在栈区的。
+堆区：用来动态申请, malloc和free函数，操作系统确保能够申请到足够多的内存。
+
+Stack Pointer: 属于寄存器的一种，存储上次函数执行到了什么位置，比如func1调用func2，func2执行完毕之后fun1在之前调用fun2的位置上继续执行。
+
+Stack: 存储函数调用信息，比如参数值以及临时变量。
+
+PC: 记录指令执行的位置。
+
+
+父进程 子进程：
+通过 fork 函数创建，返回两次，之后再谈。
+
+Linux写时复制：当父进程调用fork创建子进程时，代码段，数据段，堆栈段都是和父进程共享的，当父进程使变量发生变化时，为子进程相应的段分配新的物理空间。不是因为exec的话，代码段还是共享的，如果发生了exec，此时执行的代码是不同的，此时为代码段分配新的物理空间，成为写时复制技术。写入时复制技术.
+
+父子进程先是共享相同的物理空间，直到其中一个进程对共享变量进行写入，此时会复制一份物理空间给子进程，子进程的优先级较高，调用exec时会清空堆栈区和代码段。
+
+父子进程共享的内容： 堆栈区，代码段(几乎是全部共享)。
+
+CPU Scheduler: 
+
+OS must:
+
+Preempt == interrupt and save current context(to the pcb).
+Schedule == choose the next process to be running.
+Dispatch == dispatch it on cpu, swtich context.
+
+操作系统调度
+
+CPU主流调度算法:
+
+FCFS算法(先来先服务算法):
+最为简单的一种调度算法，可以用在资源调度和进程调度上，即先进入队列的优先进行调度，是公平算法，但是效率低下，有利于长作业不利于短作业，对于CPU繁忙型有利，不利于I/O密集型。属于不可剥夺算法。
+
+SJF(短作业优先算法):
+预估执行时间最短的作业或者进程优先被分配，有利于短作业，不利于长作业，对于长作业可能会发生“饥饿”。
+
+优先级调度算法：
+根据优先级进行调度，优先级为作业的紧迫程度，既用于作业调度，也用于进程调度。
+可以分成剥夺式和非剥夺式，剥夺式是指某个作业／进程在运行过程中若是此时队列中有优先级更高的作业／进程，则会切换到另外一个进程中去。也可以分为静态优先级和动态优先级，含义是运行之后优先级是否会改变。
+
+高响应比优先调度算法：
+主要用于作业调度，结合了FCFS和SJF算法的优缺点，优先对高响应比的作业进行调度，以下是响应比的公式：
+
+响应比 = 等待时间 + 要求服务时间 ／ 要求服务时间
+
+可以看到，等待时间相同的，要求服务时间越短越好，有利于短作业。
+对于长作业来说，若是等待时间越长，提高响应比，则可服了SJF算法中长作业的饥饿问题。
+
+时间片轮转调度算法:
+和FCFS算法类似，但是一次只能消耗一个时间片，所以时间片大小的设置对于性能有很大的影响。
+
+多级反馈队列调度算法：
+结合了前面几种算法的优点
+设置1到n个队列，优先级依次降低，时间片依次升高
+先执行高优先级队列的进程／作业，若在一个时间片之内不能执行完毕则把它放在下一个队列的末尾，以此类推。
+若在执行过程中有进程进了优先级更高的队列，则新进程将会强占处理机，正在运行的会被放在队列的末尾。
+
+IPC通信方式：
+
+Linux继承了Unix通信方式，主要有管道(Pipe)及有名管道(Named Pipe, FIFO)通信，信号, System V IPC, POSIX IPC
+
+其余的参见优秀的博文，这里不再进行分析(懒。。。)
+
+线程和进程：
+线程是进程的一个可执行单位，在CPU拥有一个独立的执行上下文。
+多个线程可以共享所属进程的Address Space。
+每个线程拥有自己的Program Counter, Stack Pointer, Stack, Thread-Specified Registers.
+线程数 > CPU数，发生Context Switch，不过因为共享Address Space所以代价比进程切换更小。
+
+线程的创建：
+
+线程的DataStructure：
+Type, PC, SP, registers, stack...
+
+fork(proc, args)开启一个线程。
+
+线程排它锁：
+属于悲观锁(悲观锁和乐观锁的区别？)
+Mutex排它锁：Mutual Exclusion
+
+条件(Condition): 类似于wait/notify 当某个条件满足的时候线程从阻塞状态返回继续执行，阻塞队列也类似(当读取阻塞队列的时候，队列为空时则阻塞当前线程，不为空时返回)。
+
+Condition Variable: 当调用wait/notify时，必须先获得关于这个变量的锁，看一下notify/wait的典型写法吧。。。通常是在外层嵌套一层while()检测条件是否是满足的。
+
+wait方法调用之后此线程会被放在wait queue里面，notify/notifyAll。。
+
+ReadWriteLock: 可以采用wait/notify模式来进行实现，以下是用Java代码的读写锁的实现：
+
+    public class ReadWriteLock {
+
+        private static class ReadWriteMutex {
+            int flag = 0;
+        }
+        
+        private final ReadWriteMutex mutex = new ReadWriteMutex();
+        
+        public void acquireReadLock() throws InterruptedException {
+            synchronized (mutex) {
+                while (mutex.flag == -1) {
+                    wait(); // 在这里已经释放锁了
+                }
+                mutex.flag++;
+            }
+        }
+        
+        public void releaseReadLock() {
+            synchronized (mutex) {
+                if (mutex.flag <= 0) {
+                    throw new IllegalStateException();
+                }
+                if (--mutex.flag == 0)
+                    notifyAll();
+            }
+        }
+        
+        public void acquireWriteLock() throws InterruptedException {
+            synchronized (mutex) {
+                while (mutex.flag != 0) {
+                    wait();
+                    mutex.flag = -1;
+                }
+            }
+        }
+        
+        public void releaseWriteLock() {
+            synchronized (mutex) {
+                if (mutex.flag != -1) {
+                    throw new IllegalStateException();
+                }
+                mutex.flag = 0;
+                // 这里存在不正确的唤醒，有可能读线程获取到锁之后发现条件并未满足。
+                notifyAll();
+                // 释放锁之后才会恢复等待的线程(需要让等待的线程重新获得锁)
+            }
+        }
+        
+    }
+
+以上性能觉得难以接受，应该在两个条件上等待。
+
+性能问题：不正常的唤醒，唤醒之后发现条件并未满足
+正确性问题：死锁--主要和锁的获取顺序有关，尽量保持锁的获取顺序一致。
+
+守护进程：直接看这篇博客：http://blog.csdn.net/hunanchenxingyu/article/details/25084117
+
+
+内核线程、用户线程：
+用户线程执行时必须绑定一个内核线程，相当于封装，os层面的Scheduler将其调度至底层CPU。
+
+内核线程和用户线程的关系：
+
+概念解析：
+内核线程：是守护进程的一种，存在于内核层面，用来管理硬件资源，响应用户进程的请求。  
+
+
+一对一模型：将用户进程所需的线程操作(包括一致性保障)交给底层os去做，一个用户线程绑定一个内核线程。缺点就是每一次线程操作都得来一次system call，完成用户态到核心态的转换。受制于系统底层的规则。
+
+多对一模型：多个用户线程(在一个进程的)对应一个核心态线程。Thread management library来决定两者的映射关系。
+优点为将线程操作交给用户态的Thread library，totally portable。
+不过当：用户线程用来做IO操作的时候，发生阻塞，对应的kernel thread也发生阻塞，此时操作系统会将整个进程block掉，这时进程中的其他线程就必须等待了。
+
+多对多模型
+多对多模型意味着一个进程之内的某些线程可以对应一个核心态线程，某一个也可以和核心态线程有一对一关系，结合了前两种关系的优点。对于那些一对一的线程通常有更高的优先级或者要求更高的响应性。
+
+Scope of thread:(没怎么看明白有什么用处)
+
+System scope: System-wide threads, managed by OS-level, thread managers, eg, cpu scheduler.
+
+User-level library manages threads within a single process.
+
+多线程模式：
+
+Boss/Workers: 一个作为主线程分发任务，另外的工作线程用于后台执行，并和主线程之间保持通信。
+可以进行直接通信，不过Boss线程必须知道Workers线程的状态
+另外一种通信方式是通过阻塞队列的形式，此时Boss线程只需把任务提交到阻塞队列即可，Workers线程监听此阻塞队列，
+此时Boss不需要实际直到Workers的状态。工作模型的吞吐量主要取决于Boss线程。
+
+合理安排工作线程：为了合理安排线程，需要用到线程池的技术
+
+Boss/Workers模式的缺点：难以进行管理，并且Boss不能感知Workers的状态所以不能对特定任务选择优先线程来处理。
+
+变种：分类Workers，一类Workers处理一类特殊的任务，此时Boss线程需要进程合理的安排。达到更好的locality.
+
+流水线：相当于计组1中的流水线，可以画星空图，其吞吐量主要取决于最耗时的操作。
+
+PThreads: POSIX Threads. 在这里直接跳过，因为联系其和特定语言(c语言相关), 我已经对Java的多线程模型较为熟悉，
+直接跳过。
+
+调度：
+
+进程调度，任务调度，Linux主流调度算法及其性能比较。
+
+调度的算法和runqueue的数据结构是紧密相关的……  What is runqueue???
+
+run-to-completion scheduling: 即对应上面提到的非剥夺式调度算法。
+
+以下是各种算法对应的runqueue:
+
+FCFS: FIFO Queue
+SJF,CJF: LinkedHashMap ?? 不一定是一个线性结构，有可能是堆形
+
+剥夺式算法(Preemptive scheduling): 当有新任务进入Ready Queue时Scheduler根据Policy重新进行调度
+
+Execution time的确定：难以确定，可以根据以下几个因素来确定：
+
+上一次此任务的执行时间：历史是最好的武器。History is a good predictor of what will happen.
+
+??? 其他因素 ??? 暂且未知
+
+Priority Inversion: 优先级较为低的进程/线程(后面统称为Task)优先获得了锁，优先级高的作业获取锁时，
+只能先进入wait状态等到优先级低的作业释放锁后得以执行。
+
+解决方案：对于获得锁的进／线程执行boost priority, 含义是对于优先级较高的进程获取锁的过程中，如果得不到锁，
+则把拥有锁的进／线程优先级提高到获取锁的进程的优先等级，当释放锁的时候再降低到原来的优先级，以保证优先级较高的
+作业尽快得到执行。
+
+Round Robin Scheduling: 类似与FCFS, 有两种情况值得讨论：
+
+对于优先级相同的几个任务，采取FCFS的方式执行，不过和后者不同的是，允许yield，即一个任务若要执行IO操作并进入了wait
+状态，此时会安排其他的任务来执行，即剥夺式。
+
+对于优先级不同的任务，优先安排优先级较为高的任务，此时是剥夺式的 Preemptive.
+
+时间片轮询法(Time slicing): 给一个任务指定的时间片，当在此时间片完不成时，yield到下一个任务，以此类推。
+
+有以下两种可能：
+做了IO操作或是因为其他的原因进入wait队列，此时任务不再占用CPU, Scheduler将会调度其他的任务。
+有优先级更高的任务进入了Ready队列。
+此时任务也许没有光分配的Time slice.
+
+对于时间片分配的较小的情景：要求服务时间较小的先执行完毕，应答性更好。
+缺点就是频繁的调度会造成性能问题，context-switch是花费时间的。尽量将时间片设置的比context-switch的时间长一点，能把影响降低到最小。
+
+下面来看两种情况下对于时间片长度的设置：
+对于CPU Bound类型的：cpu密集型任务，时间片设置的大比较合理，比较的指标是completion time。
+对于IO Bound类型的：io密集的任务，采取较小的时间片较为合适，比较的指标是wait time，出于响应性考虑。
+
+Runueue data structure:
+
+多级反馈队列(Multi-Level feedback queue):
+
+把一个数据结构分成三层，第一层时间片分的最少，存储的是IO密集型任务，优先级最高，第二层时间片大一点，存储
+IO和CPU混合型任务，第三层是时间片最大，优先级最低，存储的是CPU密集型任务(实际情况可能不止三层，有的操作系统有60层)
+对于一个任务，可以根据其先前的History来决定把它分配到哪个队列，若是一个新的任务，流程如下：
+
+先把它放到优先级最高的队列中，若其在时间片执行过程中发生IO操作，则系统认为放到IO密集型是正确的选择。
+若是在第一级队列中，在一个时间片内没有完成任务，则系统把它分配到下一级队列中，以此类推。
+若是在某一级队列中频繁发生IO操作，则会发生boost priority，把它分配到上一级队列。
+
+Linux Scheduler:
+
+
+
+
+
+
