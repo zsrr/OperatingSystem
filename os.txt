@@ -282,7 +282,48 @@ IO和CPU混合型任务，第三层是时间片最大，优先级最低，存储
 若是在某一级队列中频繁发生IO操作，则会发生boost priority，把它分配到上一级队列。
 
 Linux Scheduler:
+下面来看Linux系统的Scheduler
 
+O(1) Scheduler:
+
+把优先级分成0到139，0到99是Real-time tasks, 100-130是其余的，
+对于用户进程默认的优先级是120, 可以调整nice值进行修改，nice值的范围是-20到19,默认是0
+和实际优先级的关系为  priority = nice + 120.
+
+对于时间片的分配，类似multi-level feedback queue，只不过对于最低的优先级分配了最小的时间片
+最高的优先级分配最多……不知道为啥。也就是说IO拥有更高的优先级，不过分配更多的时间片，与之前学到的相反……
+
+对于feedback来说，如果sleep时间长的话，其优先级会变高，如果是cpu密集型，则优先级变低……
+
+维持两个数组：
+分别是Active tasks和expired tasks
+第一个存储的是正在执行的任务，如果发生了IO操作或者有更高优先级的任务进入队列发生切换，则继续存在于这个数组
+时间片耗完之后则进入expired数组，当active数组没有任务的时候，两个数组指针切换，继续执行先前没执行完的任务。
+此意思是expired变active, active变expired.
+
+刚刚这个O(1)很迷，估计有很多讲错的地方，现在我重新审视以下这个O(1)排程器
+
+现在懂了，对于IO密集型的进程嘛，Linux视其为与用户交互比较多的进程，分配更多的时间是为了run longer and more frequently
+意思就是说 一个进程在没用完它的时间片发生IO操作的话，还会放在Active数组的，只不过cpu切到了同级队列另外一个进程或者下一个队列的
+进程，此机制可以保证它在Active数组中存活的时间更长，也就是说运行的更频繁。
+
+让我恍然大悟的原句：
+Note that a process does not have to use all its timeslice at once.
+For example, a process with a 100 millisecond timeslice does not have to run for 100 milliseconds in one
+go or risk losing the remaining timeslice. Instead, the process can run on five different reschedules for
+20 milliseconds each. Thus, a large timeslice also benefits interactive tasks—while they do not need such
+a large timeslice all at once, it ensures they remain runnable for as long as possible.
+
+缺点是：在Expired数组中的任务无法被调度，将严重影响到交互式应用程序的用户体验。
+No fairness guarantees.
+
+为了这些主要且显著的缺点，CFS调度器在Linux kernel 2.6版本中引入
+
+CFS(completely fair scheduler): 用红黑树做runqueue(噩梦，超变态级数据结构，希望面试不会被问到……)
+在红黑树中，任务根据在CPU的耗时多少排列，最左边最下面的是耗时最少的任务，优先安排最左下角的任务。
+CFS周期性的增加正在执行的任务的vruntime的值，并与当前红黑树左下角的值相比较，如果比它小，继续执行，比它大则yield.
+
+对于优先级不同的任务来说，优先级越高，则上述增加vruntime并且比较发生的频率越低
 
 
 
