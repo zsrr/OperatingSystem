@@ -325,6 +325,25 @@ CFS周期性的增加正在执行的任务的vruntime的值，并与当前红黑
 
 对于优先级不同的任务来说，优先级越高，则上述增加vruntime并且比较发生的频率越低
 
+Multi-CPU system:
+对于多个cpu，每个cpu都有自己的缓存，多个cpu共享一个内存(Memory)
+cache affinity: 对于一个线程来说，要把它调度在之前执行的CPU之上，这样能更好地利用hot cache.
+要达到这一点，需要对cpu进行负载均衡load balancing
+对于不同的任务，分配到不同的cpu之上
+分配的准则：runqueue的长度(或者说大小），或者当一个cpu处在idle状态的时候，从另外的cpu中窃取任务(Java的fork/join)
+
+对于多内存：内存和cpu之间通过某种手段进行连接，如QPI
+一个内存节点可以通过技术手段连接cpu，例如通过socket of multiple processors...（没有看懂）
+NUMA(没看懂）……
+
+Hyperthreading: 对于一个指定的cpu，划分成n组寄存器，在一个时间点调度n个线程(不过一个时间点只执行一个)。
+对于Scheduler来说，需要决定n个线程来运行在这些个Hardware contexts之上。
+好处就是context switch的时间极为短暂，比从内存当中切换代价小的多。一个更好的名称是Simultaneous Multithreading
+SMT
+
+SMT调度的原则是将cpu bound类型的和memory bound类型的混合起来，这样既不会造成过大的性能损失，也不会浪费无用的cpu资源。
+
+对于此复习到这儿，感觉这块知识偏离硬件了，超出了我的复习范围，就这样吧……
 
 
 
