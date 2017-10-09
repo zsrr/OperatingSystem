@@ -345,6 +345,70 @@ SMT调度的原则是将cpu bound类型的和memory bound类型的混合起来�
 
 对于此复习到这儿，感觉这块知识偏离硬件了，超出了我的复习范围，就这样吧……
 
+操作系统内存管理：
+
+页式存储管理，由于时间原因只学习这一种就行了，承前启后。
+
+逻辑地址(虚拟地址)和物理地址(主存中物理单元的集合)
+
+在32位系统当中，程序的逻辑地址大小为2的32次方B = 4GB
+
+基本概念：
+页：将逻辑地址空间划分为页，在物理地址空间有与之对应的页框。
+
+内存管理单元：CPU硬件，用于将逻辑地址映射为物理地址。并且在非法访问时产生错误，交由操作系统处理。
+
+PTE的结构：主要记住几个常用的位……到时候查查。
+
+操作系统维持一个页表，页表存在于主存当中，不能被交换到硬盘，PCB中存在指针指向当前进程的页表，页表加载到CPU的CR3寄存器当中。
+
+二级页表
+单页表引起的主要问题是占用内存太大，因此引入多级页表，以二级页表为例，其PTE分成了三部分，offset部分不变，VPN部分分成了两部分，第一部分指向Outer Page Table, 第二部分指向Inner Page Table，因为Virtual Address中缺失的块不需要一个Inner Page Table，所以能够有效的减小占用的内存。(主要看计算)
+
+上述多级页表引入的问题是加长了Translation的时间，为了应对此问题，引入了Cache机制，叫做Translation Lookaside Buffer，TLB将会包含必要的保护和监测位来验证操作是否正确，如果是错误的，则产生fault交由操作系统处理。
+
+Inverted Page Table:
+根据物理空间建的一张共享的页表，每一个Entry对应一个物理存储单元。因为是共享的，所以要加上一个额外的pid来标识所属的是哪一个进程。
+
+存在的主要问题是通常要对这个表执行线性查找，性能极差，为了解决这个问题，引入了Hash Page Table，将Pid + VPN作为键值，然后将Page Table Entry作为值，PTE维持一个列表(为了解决Hash冲突问题)，遍历此列表然后看Pid + VPN的值进行比较得到物理页号(PFN).
+
+Page Size怎么计算：假如是32位的，12位来表示offset，那么一个Page的size就是2的12次方 = 4kb
+那么PTE的个数就是2^32 / 2^12 = 2^20  不能混淆……  32位address space的大小为2^32B这么大，不是一个字节对应8个比特的关系。
+
+或者直接计算vpn的位。
+
+Linux Allocator:
+
+Buddy Allocator(伙伴分配器):
+直接引用别人的话吧：This is an allocation scheme which combines a normal power-of-two allocator with free buffer coalescing [Vah96] and the basic concept behind it is quite simple. Memory is broken up into large blocks of pages where each block is a power of two number of pages. If a block of the desired size is not available, a large block is broken up in half and the two blocks are buddies to each other. One half is used for the allocation and the other is free. The blocks are continuously halved as necessary until a block of the desired size is available. When a block is later freed, the buddy is examined and the two coalesced if it is free.
+
+优点就是两个相邻的内存片段聚合的很快，缺点就是申请的内存长度必须是2的整数次方，而有些数据结构不是2的整数次方，这就会造成内存碎片问题，因此用slab allocator得以解决。
+
+Slab Allocator(Slab分配器): 
+太复杂，不想看了……
+
+
+交换(Paging或者Swapping):
+实际可用的物理内存通常比Address Space的大小小得多，这就需要将内存中的一部分转移到硬盘或者其他设备上。
+
+整个交换的过程如下：
+当页不在实际内存上时，PTE当中的Present Bit设置为0。
+当对此页进行引用时，MMU察觉此页不在物理内存当中，raise a fault and trapped by operating system，操作系统察觉了这是一个Page fault并且如果之前发生过交换，则从存储设备中取出，在DRAM中重新分配一个页框，并更新页表，PC更新，重新发送指令。
+
+对于交换的时机：
+一种是内存使用达到了上限
+一种是CPU使用达到了下限，即长期处在闲置状态，此时对进程进行页交换不会影响体验。
+
+哪些页应该被交换：
+一种是查看Access位（存在于PTE当中），来查看它在近期是否被引用，通过LRU算法来得出要进行交换的页
+一种是查看Dirty位，查看不需要对disk进行写入的Page
+对于那种持有内核状态的页无论何时都不应该交换
+
+在Linux操作系统当中，可以通过参数来设置交换的策略
+linux同时将页分成不同的类型。
+默认采用的淘汰算法是LRU算法(Least Recently Used)
+
+
 
 
 
