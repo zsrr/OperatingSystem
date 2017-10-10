@@ -408,6 +408,73 @@ Slab Allocator(Slab分配器):
 linux同时将页分成不同的类型。
 默认采用的淘汰算法是LRU算法(Least Recently Used)
 
+IPC进程通信机制：
+ 
+Shared Memory: 共享内存的方式
+利用某些机制交换消息，例如Socket或者管道
+利用Mutex锁来进行争取的并发
+
+后两者是OS层面直接支持的
+
+分成基于消息的机制或者基于共享内存的机制
+
+基于消息的机制：消息队列，管道，Socket
+
+内核管理通信所要用的channel，此channel可以是一个队列，从这个channel当中读取消息，或者向这个channel投放消息需要system call并且将数据从内核态复制到用户态(或者反过来)，因为channel是在kernel层。
+
+缺点就是由内核直接管理channel，IPC需要频繁的进行用户态核心态两种状态的转变，并且需要拷贝数据，这会造成很严重的系统负载。优点是管理比较方便。
+
+POSIX标准方式：Pipes管道： 
+
+管道只能用于两个进程之间的通信，其消息不回保存，只能从一个进程对这个管道进行推送另一个进程进行接收。
+
+更为优雅的方式：Message Queue
+
+消息队列对消息的格式做了定义，消息可以有优先级，其可以被POSIX支持或者System V(5的罗马数字)
+
+广泛的方式 Socket API:
+
+通过Buffer进行通信，socket()函数创建了Kernel层级的socket buffer。
+
+基于共享内存的机制：
+
+OS kernel established shared memory channel between processes.
+就是说两个进程的虚拟地址空间的某些部分映射到相同的物理空间。
+
+优点就是System call只在分配内存的时候发生，data copy的数目减少，不过并没有被排除。
+缺点就是需要同步手段来提供正确性的保证。传输的规范交给了开发者去做。 不过这是最快也是最有效的IPC方式，需要重点关注学习。
+
+copy vs map
+copy是在基于消息的IPC中使用的，将数据从用户态复制到核心态，或者按照相反的方向进行。开销较大。
+map是指将物理空间的某一块区域映射到两个进程的Address Space，这个开销也很大，不过只进行一次。
+所以长久来说，后者的解决方案较为成熟。
+第二种方式数据也会发生拷贝，不过不会发生状态改变。  为什么？？什么情况下才会发生数据拷贝？
+
+System V Unix Api:
+segment: 物理内存上的一块
+create:
+产生一个unique key来标记，进程通过此key来将自己的Address Space与其绑定。
+attach: 进程将自己的虚拟地址空间的某一块与其绑定。
+detach: PTE检测位实效
+destroy: only we request for it.
+
+同步机制：
+一种是用线程库的同步机制，例如PThreads.
+另外一种是OS层面支持的。
+
+Pthreads这里不再详谈，需要注意的是共享的变量，包括锁，要在共享内存上进行分配。
+
+量外两种方式是采取消息队列(???这时候没有性能问题了???)或者信号量的方式来进行同步
+
+
+
+
+
+
+
+
+
+
 
 
 
